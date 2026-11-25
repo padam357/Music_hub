@@ -1,0 +1,29 @@
+
+<?php
+session_start();
+
+$host = "localhost";
+$dbname = "db2448409";
+$username = "2448409";
+$password = "Padam@321";
+
+try {
+    $pdo = new PDO(
+        "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
+        $username,
+        $password
+    );
+
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    die("Database connection failed. Please try again later.");
+}
+
+// Generate CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+?>
