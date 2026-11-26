@@ -1,43 +1,41 @@
-```php
 <?php
-require_once 'db.php';
 
-// Only logged-in users can edit music
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/db.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Login protection
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
 
-// Check CSRF token exists
+// CSRF token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
-function clean($value) {
-    return htmlspecialchars(
-        (string)($value ?? ''),
-        ENT_QUOTES,
-        'UTF-8'
-    );
 }
 
 // Validate music ID
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
 if (!$id || $id < 1) {
-    die("Invalid music ID.");
+    die('Invalid music ID.');
 }
 
 // Fetch existing music
 $stmt = $pdo->prepare(
     "SELECT * FROM music WHERE music_id = ?"
 );
+
 $stmt->execute([$id]);
 
 $song = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$song) {
-    die("Music record not found.");
+    die('Music record not found.');
 }
 
 $message = '';
@@ -46,10 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $token = $_POST['csrf_token'] ?? '';
 
-    if (!is_string($token) ||
-        !hash_equals($_SESSION['csrf_token'], $token)) {
+    if (
+        !is_string($token) ||
+        !hash_equals($_SESSION['csrf_token'], $token)
+    ) {
 
-        $message = "Invalid security token. Please refresh the page.";
+        $message = 'Invalid security token. Please refresh the page.';
 
     } else {
 
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $lyrics = trim($_POST['lyrics'] ?? '');
         $description = trim($_POST['description'] ?? '');
 
-        // Keep submitted values if validation fails
+        // Keep submitted values in the form
         $song['title'] = $title;
         $song['artist'] = $artist;
         $song['album'] = $album;
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($title === '' || $artist === '') {
 
-            $message = "Title and artist are required.";
+            $message = 'Title and artist are required.';
 
         } elseif (
             strlen($title) > 150 ||
@@ -81,26 +81,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             strlen($genre) > 50
         ) {
 
-            $message = "One or more fields are too long.";
+            $message = 'One or more fields are too long.';
 
         } elseif (strlen($lyrics) > 20000) {
 
-            $message = "Lyrics must be 20,000 characters or fewer.";
+            $message = 'Lyrics must be 20,000 characters or fewer.';
 
         } elseif (strlen($description) > 5000) {
 
-            $message = "Description must be 5,000 characters or fewer.";
+            $message = 'Description must be 5,000 characters or fewer.';
 
         } elseif (
             $year !== '' &&
             (
                 !ctype_digit($year) ||
                 (int)$year < 1000 ||
-                (int)$year > 2155
+                (int)$year > (int)date('Y') + 1
             )
         ) {
 
-            $message = "Please enter a valid release year.";
+            $message = 'Please enter a valid release year.';
 
         } else {
 
@@ -131,211 +131,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-                header("Location: index.php?updated=1");
+                header('Location: index.php?updated=1');
                 exit;
 
             } catch (PDOException $e) {
 
                 error_log($e->getMessage());
-                $message = "Unable to update music. Please try again.";
+
+                $message = 'Unable to update music. Please try again.';
             }
         }
     }
 }
-?>
 
-<!DOCTYPE html>
-<html lang="en">
+// Twig setup
+$loader = new \Twig\Loader\FilesystemLoader(
+    __DIR__ . '/templates'
+);
 
-<head>
+$twig = new \Twig\Environment($loader, [
+    'cache' => false,
+    'autoescape' => 'html'
+]);
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+echo $twig->render('edit_music.html.twig', [
 
-<title>Edit Music - MusicHub</title>
+    'id' => $id,
+    'song' => $song,
+    'message' => $message,
+    'csrf_token' => $_SESSION['csrf_token'],
+    'current_year' => (int)date('Y') + 1
 
-<style>
-
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f9;
-    margin: 0;
-    padding: 30px 15px;
-    color: #222;
-}
-
-.container {
-    max-width: 650px;
-    margin: auto;
-    background: white;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-h1 {
-    text-align: center;
-    color: #202040;
-}
-
-label {
-    display: block;
-    font-weight: bold;
-    margin-top: 15px;
-}
-
-input, textarea {
-    width: 100%;
-    padding: 12px;
-    margin-top: 7px;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 15px;
-}
-
-textarea {
-    resize: vertical;
-}
-
-button {
-    width: 100%;
-    padding: 13px;
-    margin-top: 20px;
-    background: #3939a5;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #25256e;
-}
-
-.message {
-    background: #ffecec;
-    color: #c0392b;
-    padding: 12px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-}
-
-.links {
-    text-align: center;
-    margin-top: 20px;
-}
-
-a {
-    color: #3939a5;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="container">
-
-    <h1>Edit Music</h1>
-
-    <p>Edit your selected music record below.</p>
-
-    <?php if ($message !== ''): ?>
-
-        <div class="message">
-            <?= clean($message) ?>
-        </div>
-
-    <?php endif; ?>
-
-    <form method="POST"
-          action="edit_music.php?id=<?= (int)$id ?>">
-
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= clean($_SESSION['csrf_token']) ?>"
-        >
-
-        <label>Song Title *</label>
-
-        <input
-            type="text"
-            name="title"
-            maxlength="150"
-            value="<?= clean($song['title']) ?>"
-            required
-        >
-
-        <label>Artist Name *</label>
-
-        <input
-            type="text"
-            name="artist"
-            maxlength="100"
-            value="<?= clean($song['artist']) ?>"
-            required
-        >
-
-        <label>Album Name</label>
-
-        <input
-            type="text"
-            name="album"
-            maxlength="150"
-            value="<?= clean($song['album']) ?>"
-        >
-
-        <label>Genre</label>
-
-        <input
-            type="text"
-            name="genre"
-            maxlength="50"
-            value="<?= clean($song['genre']) ?>"
-        >
-
-        <label>Release Year</label>
-
-        <input
-            type="number"
-            name="release_year"
-            min="1000"
-            max="2155"
-            value="<?= clean($song['release_year']) ?>"
-        >
-
-        <label>Lyrics</label>
-
-        <textarea
-            name="lyrics"
-            rows="6"
-            maxlength="20000"
-        ><?= clean($song['lyrics']) ?></textarea>
-
-        <label>Description</label>
-
-        <textarea
-            name="description"
-            rows="4"
-            maxlength="5000"
-        ><?= clean($song['description']) ?></textarea>
-
-        <button type="submit">
-            Update Music
-        </button>
-
-    </form>
-
-    <div class="links">
-        <a href="index.php">Back to Music Library</a>
-    </div>
-
-</div>
-
-</body>
-</html>
-```
+]);
