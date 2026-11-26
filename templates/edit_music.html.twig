@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Music - MusicHub</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 30px 15px;
+            color: #222;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #202040;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-top: 7px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 15px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 20px;
+            background: #3939a5;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #25256e;
+        }
+
+        .message {
+            background: #ffecec;
+            color: #c0392b;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        a {
+            color: #3939a5;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Edit Music</h1>
+
+    <p>Edit your selected music record below.</p>
+
+    {% if message %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    <form method="POST" action="edit_music.php?id={{ id }}">
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
+
+        <label>Song Title *</label>
+        <input
+            type="text"
+            name="title"
+            maxlength="150"
+            value="{{ song.title }}"
+            required
+        >
+
+        <label>Artist Name *</label>
+        <input
+            type="text"
+            name="artist"
+            maxlength="100"
+            value="{{ song.artist }}"
+            required
+        >
+
+        <label>Album Name</label>
+        <input
+            type="text"
+            name="album"
+            maxlength="150"
+            value="{{ song.album }}"
+        >
+
+        <label>Genre</label>
+        <input
+            type="text"
+            name="genre"
+            maxlength="50"
+            value="{{ song.genre }}"
+        >
+
+        <label>Release Year</label>
+        <input
+            type="number"
+            name="release_year"
+            min="1000"
+            max="{{ current_year }}"
+            value="{{ song.release_year }}"
+        >
+
+        <label>Lyrics</label>
+        <textarea name="lyrics" rows="6" maxlength="20000">{{ song.lyrics }}</textarea>
+
+        <label>Description</label>
+        <textarea name="description" rows="4" maxlength="5000">{{ song.description }}</textarea>
+
+        <button type="submit">
+            Update Music
+        </button>
+
+    </form>
+
+    <div class="links">
+        <a href="index.php">Back to Music Library</a>
+    </div>
+
+</div>
+
+</body>
+</html>
